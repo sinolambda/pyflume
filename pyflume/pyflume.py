@@ -1,10 +1,12 @@
 #coding=utf-8
 '''
-Created on 2013年7月18日
+Created on 2013-07-18
 
-@author: Administrator
+@author: Felix
 '''
 from genpy.flume import ThriftSourceProtocol
+from genpy.flume.ttypes import ThriftFlumeEvent
+
 from thrift.transport import TTransport, TSocket
 from thrift.protocol import TCompactProtocol
 
@@ -46,12 +48,18 @@ class FlumeClient(object):
         self.client = ThriftSourceProtocol.Client(iprot=self._protocol, oprot=self._protocol)
         self._transObj.connect()
         
-    def send(self, headers, event):
-        event = ThriftSourceProtocol.ThriftFlumeEvent(headers, event)
+    def send(self, event):
         try:
             self.client.append(event)
         except Exception, e:
-            print('Something wrong')
+            print(e)
+        finally:
+            self._transObj.connect()
+    
+    def send_batch(self, events):
+        try:
+            self.client.appendBatch(events)
+        except Exception, e:
             print(e)
         finally:
             self._transObj.connect()
@@ -60,8 +68,13 @@ class FlumeClient(object):
         self._transObj.close()
     
 if __name__ == '__main__':
+    import random
     flume_client = FlumeClient('192.168.1.141', 4141)
-    flume_client.send({'a':'hello', 'b':'world'}, 'events under hello world')
+    event = ThriftFlumeEvent({'a':'hello', 'b':'world'}, 'events under hello world2')
+    events = [ThriftFlumeEvent({'a':'hello', 'b':'world'}, 'events under hello world%s' % random.randint(0, 1000)) for _ in range(100)]
+    
+    flume_client.send(event)
+    flume_client.send_batch(events)
     flume_client.close()
     
         
